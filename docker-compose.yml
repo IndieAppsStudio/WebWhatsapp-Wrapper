@@ -3,6 +3,8 @@ services:
   browser:
     image: selenium/standalone-firefox-debug:3.141
     container_name: selenium-browser
+    environment:
+      - SE_NODE_SESSION_TIMEOUT=31104000
     networks:
       - selenium
 
