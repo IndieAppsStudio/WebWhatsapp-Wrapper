@@ -89,7 +89,7 @@ class WhatsAPIDriver(object):
         "UnreadChatBanner": ".message-list",
         "ReconnectLink": ".action",
         "WhatsappQrIcon": "span.icon:nth-child(2)",
-        "QRReloader": "div[data-ref] > span > div",
+        "QRReloader": "div[data-ref] > span > button",
         "OpenHereButton": "div[data-animate-modal-body=true] div[role=button]:nth-child(2)",
     }
 
@@ -599,6 +599,9 @@ class WhatsAPIDriver(object):
 
     def reload_qr(self):
         self.driver.find_element_by_css_selector(self._SELECTORS["QRReloader"]).click()
+
+    def open_here(self):
+        self.driver.find_element_by_css_selector(self._SELECTORS["OpenHereButton"]).click()
 
     def get_status(self):
         """

@@ -19,13 +19,14 @@ if (!window.Store) {
                 { id: "State", conditions: (module) => (module.STATE && module.STREAM) ? module : null },
                 { id: "WapDelete", conditions: (module) => (module.sendConversationDelete && module.sendConversationDelete.length == 2) ? module : null },
                 { id: "Conn", conditions: (module) => (module.default && module.default.ref && module.default.refTTL) ? module.default : null },
-                { id: "WapQuery", conditions: (module) => (module.queryExist) ? module : ((module.default && module.default.queryExist) ? module.default : null) },
+                { id: "WapQuery", conditions: (module) => (module.default && module.default.queryExist) ? module.default : null },
                 { id: "CryptoLib", conditions: (module) => (module.decryptE2EMedia) ? module : null },
                 { id: "OpenChat", conditions: (module) => (module.default && module.default.prototype && module.default.prototype.openChat) ? module.default : null },
                 { id: "UserConstructor", conditions: (module) => (module.default && module.default.prototype && module.default.prototype.isServer && module.default.prototype.isUser) ? module.default : null },
                 { id: "SendTextMsgToChat", conditions: (module) => (module.sendTextMsgToChat) ? module.sendTextMsgToChat : null },
                 { id: "SendSeen", conditions: (module) => (module.sendSeen) ? module.sendSeen : null },
-                { id: "sendDelete", conditions: (module) => (module.sendDelete) ? module.sendDelete : null }
+                { id: "sendDelete", conditions: (module) => (module.sendDelete) ? module.sendDelete : null },
+                { id: 'FindChat', conditions: (module) => (module && module.findChat)?module : null}
             ];
         for (let idx in modules) {
             if ((typeof modules[idx] === "object") && (modules[idx] !== null)) {
@@ -53,11 +54,11 @@ if (!window.Store) {
                 window.Store[needObj.id] = needObj.foundedModule;
             }
         });
-		
+
 		window.Store.Chat.modelClass.prototype.sendMessage = function (e) {
 			window.Store.SendTextMsgToChat(this, ...arguments);
-		}		
-		
+		}
+
         return window.Store;
     }
 
@@ -65,7 +66,7 @@ if (!window.Store) {
             webpackJsonp([], {'parasite': (x, y, z) => getStore(z)}, ['parasite']);
         } else {
             let tag = new Date().getTime();
-			webpackChunkbuild.push([
+			webpackChunkwhatsapp_web_client.push([
 				["parasite" + tag],
 				{
 
@@ -739,7 +740,14 @@ window.WAPI.sendMessageToID = function (id, message, done) {
             if (contact.status === 404) {
                 done(true);
             } else {
-                Store.Chat.find(contact.jid).then(chat => {
+                if(typeof contact.jid === 'undefined') {
+                        contact.jid = {
+                            '_serialized' : id,
+                            'server' : '@' + id.split('@')[1],
+                            'user' : id.split('@')[0]
+                        }
+                 }
+                Store.FindChat.findChat(contact.jid).then(chat => {
                     chat.sendMessage(message);
                     return true;
                 }).catch(reject => {
@@ -780,7 +788,11 @@ window.WAPI.sendMessage = function (id, message, done) {
     var chat = WAPI.getChat(id);
     if (chat !== undefined) {
         if (done !== undefined) {
-            chat.sendMessage(message).then(function () {
+            chat.sendMessage(message);
+
+            // Fix from https://github.com/mukulhase/WebWhatsapp-Wrapper/pull/1003#issuecomment-785545951
+            // .then(function () {
+            function checkmessage() {
                 function sleep(ms) {
                     return new Promise(resolve => setTimeout(resolve, ms));
                 }
@@ -806,7 +818,10 @@ window.WAPI.sendMessage = function (id, message, done) {
                     sleep(500).then(check);
                 }
                 check();
-            });
+            } // );
+
+            checkmessage();
+
             return true;
         } else {
             chat.sendMessage(message);
@@ -1231,7 +1246,7 @@ window.WAPI.sendImage = function (imgBase64, chatid, filename, caption, done) {
 //var idUser = new window.Store.UserConstructor(chatid);
 var idUser = new window.Store.UserConstructor(chatid, { intentionallyUsePrivateConstructor: true });
 // create new chat
-return Store.Chat.find(idUser).then((chat) => {
+return Store.FindChat.findChat(idUser).then((chat) => {
     var mediaBlob = window.WAPI.base64ImageToFile(imgBase64, filename);
     var mc = new Store.MediaCollection(chat);
     mc.processAttachments([{file: mediaBlob}, 1], chat, 1).then(() => {

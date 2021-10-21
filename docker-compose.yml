@@ -1,29 +1,44 @@
-version: "3"
-
+version: '3'
 services:
-  firefox:
-    image: selenium/standalone-firefox-debug:3.14.0-curium
-    ports:
-      - "4444:4444"
-      - "5900:5900"
-    volumes:
-      - "/dev/shm:/dev/shm"
+  browser:
+    image: selenium/standalone-firefox-debug:3.141
+    container_name: selenium-browser
     networks:
       - selenium
-  whatsapp:
-     build: .
-     environment:
-       - SELENIUM=http://firefox:4444/wd/hub
-     volumes:
-       - ".:/app"
-     command: python sample/remote.py
-     networks:
-       - selenium
-     depends_on:
-       - firefox
 
-volumes:
-  devshm:
+  application:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}
+    container_name: ${IMAGE_NAME}-${APP_ENV}-application
+    restart: unless-stopped
+    tty: true
+    environment:
+      - SELENIUM=http://selenium-browser:4444/wd/hub
+    working_dir: /app
+    volumes:
+      - ./:/app
+    networks:
+      - selenium
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}.entrypoints=http"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}.rule=Host(`${APP_HOST}`)"
+      - "traefik.http.middlewares.${IMAGE_NAME}-${APP_ENV}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}.middlewares=${IMAGE_NAME}-${APP_ENV}-https-redirect"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.entrypoints=https"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.rule=Host(`${APP_HOST}`)"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.tls=true"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.tls.certresolver=http"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.service=${IMAGE_NAME}-${APP_ENV}"
+      - "traefik.http.services.${IMAGE_NAME}-${APP_ENV}.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
 
+#Docker Networks
 networks:
   selenium:
+    driver: bridge
+  proxy:
+    external: true
