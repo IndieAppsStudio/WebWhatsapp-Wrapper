@@ -4,7 +4,9 @@ services:
     image: selenium/standalone-firefox-debug:3.141
     container_name: selenium-browser
     environment:
-      - SE_NODE_SESSION_TIMEOUT=31104000
+      - GRID_BROWSER_TIMEOUT=300000
+      - GRID_TIMEOUT=300000
+      - SE_OPTS=-timeout 300000 -browserTimeout 300000
     networks:
       - selenium
 
