@@ -3,6 +3,7 @@ services:
   browser:
     image: selenium/standalone-firefox-debug:3.141
     container_name: selenium-browser
+    restart: unless-stopped
     environment:
       - GRID_BROWSER_TIMEOUT=300000
       - GRID_TIMEOUT=300000

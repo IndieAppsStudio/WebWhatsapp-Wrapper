@@ -4,6 +4,7 @@ import re
 import shutil
 import sys
 import threading
+import requests
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BASE_DIR)
@@ -69,6 +70,21 @@ class WhatsAPIJSONEncoder(JSONEncoder):
         if isinstance(obj, MessageGroup):
             return obj.chat
         return super(WhatsAPIJSONEncoder, self).default(obj)
+
+class NewMessageObserver(object):
+    def __init__(self, webhook_url, header_key, header_value):
+        self.webhook_url = webhook_url
+        self.headers = {header_key: header_value}
+
+    def on_message_received(self, new_messages):
+        for message in new_messages:
+            if message.type == "chat":
+                print("New message '{}' received from number {}".format(message.content, message.sender.id))
+                response = requests.post(self.webhook_url, data=message, headers=self.headers)
+                print("Save response '{}'".format(response))
+            else:
+                print("New message '{}' received from number {}".format(message.type, message.sender.id))
+                requests.post(self.webhook_url, data=message, headers=self.headers)
 
 """
 ###########################
@@ -178,7 +194,7 @@ def delete_client(client_id, preserve_cache):
     """Delete all objects related to client
     
     @param client_id: ID of client user
-    @param preserve_cache: Boolean, whether to delete the chrome profile folder or not
+    @param preserve_cache: Boolean, whether to delete the firefox profile folder or not
     """
     if client_id in drivers:
         drivers.pop(client_id).quit()
@@ -420,7 +436,7 @@ def hello():
 
 @app.route("/screen", methods=["GET"])
 def get_screen():
-    """Capture chrome screen image and send it back."""
+    """Capture firefox screen image and send it back."""
     img_title = "screen_" + g.client_id + ".png"
     image_path = STATIC_FILES_PATH + img_title
     g.driver.screenshot(image_path)
@@ -522,6 +538,16 @@ def send_message(chat_id):
         return jsonify(res)
     else:
         return False
+
+@app.route("/subscribe", methods=["POST"])
+@login_required
+def subscribe():
+    """Subscribe new message"""
+    webhook_url = request.form.get("webhook_url")
+    header_key = request.form.get("header_key")
+    header_value = request.form.get("header_value")
+    g.driver.subscribe_new_messages(NewMessageObserver(webhook_url, header_key, header_value))
+    return jsonify({"success": True})
 
 # --------------------------- Admin methods ----------------------------------
 
