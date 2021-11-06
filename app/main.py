@@ -539,6 +539,25 @@ def send_message(chat_id):
     else:
         return False
 
+@app.route("/messages/unread", methods=["GET"])
+@login_required
+def get_unread_messages():
+    """Get all unread messages"""
+    mark_seen = request.args.get("mark_seen", True)
+    unread_msg = g.driver.get_unread()
+
+    if mark_seen:
+        for msg in unread_msg:
+            msg.chat.send_seen()
+
+    return jsonify(unread_msg)
+
+@app.route("/contacts", methods=["GET"])
+@login_required
+def get_contacts():
+    """Get contact list as json"""
+    return jsonify(g.driver.get_contacts())
+
 @app.route("/subscribe", methods=["POST"])
 @login_required
 def subscribe():
