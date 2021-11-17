@@ -10,6 +10,7 @@ chrome_cache/
 **/*.pyc
 profiles
 .idea
+.env
 docs/_build
 .coverage
 .eggs

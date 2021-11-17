@@ -464,6 +464,7 @@ def get_qr():
     img_title = "screen_" + g.client_id + ".png"
     image_path = STATIC_FILES_PATH + img_title
     g.driver.get_qr(image_path)
+    g.driver.save_firefox_profile(remove_old=True)
     return send_file(image_path, mimetype="image/png")
 
 @app.route("/auth/plain", methods=["GET"])
@@ -531,7 +532,7 @@ def send_message(chat_id):
     if files:
         res = send_media(chat_id, request)
     else:
-        message = request.form.get("message")
+        message = request.form.get("message", default="Empty Message")
         res = g.driver.chat_send_message(chat_id, message)
 
     if res:

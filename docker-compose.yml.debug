@@ -1,0 +1,73 @@
+version: '3'
+services:
+  browser:
+    image: selenium/standalone-firefox:4.1.0-prerelease-20211105
+    container_name: selenium-browser
+    restart: unless-stopped
+    shm_size: '2gb'
+    networks:
+      - selenium
+      - proxy
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.selenium-browser.entrypoints=http"
+      - "traefik.http.routers.selenium-browser.rule=Host(`${SELENIUM_HOST}`)"
+      - "traefik.http.middlewares.selenium-browser-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.selenium-browser.middlewares=selenium-browser-https-redirect"
+      - "traefik.http.routers.selenium-browser-secure.entrypoints=https"
+      - "traefik.http.routers.selenium-browser-secure.rule=Host(`${SELENIUM_HOST}`)"
+      - "traefik.http.routers.selenium-browser-secure.tls=true"
+      - "traefik.http.routers.selenium-browser-secure.tls.certresolver=http"
+      - "traefik.http.routers.selenium-browser-secure.service=selenium-browser"
+      - "traefik.http.services.selenium-browser.loadbalancer.server.port=4444"
+
+      - "traefik.http.routers.selenium-vnc.entrypoints=http"
+      - "traefik.http.routers.selenium-vnc.rule=Host(`${VNC_HOST}`)"
+      - "traefik.http.middlewares.selenium-vnc-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.selenium-vnc.middlewares=selenium-vnc-https-redirect"
+      - "traefik.http.routers.selenium-vnc-secure.entrypoints=https"
+      - "traefik.http.routers.selenium-vnc-secure.rule=Host(`${VNC_HOST}`)"
+      - "traefik.http.routers.selenium-vnc-secure.tls=true"
+      - "traefik.http.routers.selenium-vnc-secure.tls.certresolver=http"
+      - "traefik.http.routers.selenium-vnc-secure.service=selenium-vnc"
+      - "traefik.http.services.selenium-vnc.loadbalancer.server.port=7900"
+      
+      - "traefik.docker.network=proxy"
+
+  application:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE_NAME}
+    container_name: ${IMAGE_NAME}-${APP_ENV}-application
+    restart: unless-stopped
+    tty: true
+    environment:
+      - SELENIUM=http://selenium-browser:4444/wd/hub
+    working_dir: /app
+    volumes:
+      - ./:/app
+    networks:
+      - selenium
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}.entrypoints=http"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}.rule=Host(`${APP_HOST}`)"
+      - "traefik.http.middlewares.${IMAGE_NAME}-${APP_ENV}-https-redirect.redirectscheme.scheme=https"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}.middlewares=${IMAGE_NAME}-${APP_ENV}-https-redirect"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.entrypoints=https"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.rule=Host(`${APP_HOST}`)"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.tls=true"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.tls.certresolver=http"
+      - "traefik.http.routers.${IMAGE_NAME}-${APP_ENV}-secure.service=${IMAGE_NAME}-${APP_ENV}"
+      - "traefik.http.services.${IMAGE_NAME}-${APP_ENV}.loadbalancer.server.port=80"
+      - "traefik.docker.network=proxy"
+
+#Docker Networks
+networks:
+  selenium:
+    driver: bridge
+  proxy:
+    external: true
